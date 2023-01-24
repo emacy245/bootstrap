@@ -1,0 +1,44 @@
+name: dot-assignment
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout your repository
+        uses: actions/checkout@v3
+
+      - name: install dependencies
+        run: |
+                npm install
+      - name: build static files
+        run: |
+                npm run docs-build
+
+      - name: add build number to version.txt in _site directory
+        run: echo ${{github.run_number}} >> _site/version.txt
+
+      - name: add job name to version.txt in _site directory
+        run: echo ${{github.job}} >> _site/version.txt
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: static-files
+          path: _site
+
+  Publish-artefacts-to-S3-Bucket :
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/download-artifact@master
+          with:
+            name: static-files
+            path: _site
+        - uses: shallwefootball/s3-upload-action@master
+          with:
+            aws_key_id: ${{ secrets.AWS_KEY_ID }}
+            aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+            aws_bucket: ${{ secrets.AWS_BUCKET }}
+            source_dir: '_site'
+            destination_dir: ''
